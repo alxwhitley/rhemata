@@ -24,6 +24,35 @@ app.add_middleware(
 )
 
 
+# GHSA-82w8-qh3p-5jfq (CVE-2026-54283): starlette 0.52.1 forwards max_fields
+# and max_part_size to the multipart parser but not to the urlencoded one, so
+# request.form() on an urlencoded body is unbounded -- a single request can
+# block this worker's event loop or force allocation proportional to its body.
+# FastAPI parses the body (routing.py:366) BEFORE it solves dependencies
+# (routing.py:416), so the admin gate on /ingest does not stand in front of it;
+# the parse happens for an anonymous caller and the 401 arrives afterwards.
+#
+# No endpoint in this application accepts urlencoded input: /ingest is the only
+# route declaring form fields and it requires multipart for its file upload.
+# Refusing the content type outright therefore closes the exposure without
+# touching the coupled fastapi/starlette pins that Invariant 14 warns about.
+# Multipart is untouched and keeps its own enforced limits.
+#
+# Registered before security_headers so that middleware still stamps this
+# response. It does sit inside CORSMiddleware, so the 415 carries no CORS
+# headers -- acceptable, because no browser client here sends this type.
+# Full triage: docs/audits/2026-09/starlette_advisory_triage_2026-09-05.md
+@app.middleware("http")
+async def reject_urlencoded_bodies(request: Request, call_next):
+    media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if media_type == "application/x-www-form-urlencoded":
+        return JSONResponse(
+            status_code=415,
+            content={"detail": "Unsupported Media Type: use multipart/form-data."},
+        )
+    return await call_next(request)
+
+
 # Baseline security headers for API responses. The frontend gets its own set
 # via frontend/next.config.ts; this origin (Railway) sent none at all.
 #
