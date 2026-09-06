@@ -1,6 +1,28 @@
 #!/usr/bin/env python3
 """
-test_account_delete_request_e2e.py -- End-to-end verification of the
+⚠ THIS SCRIPT WRITES TO THE PRODUCTION DATABASE. It is not a pytest test and
+never was. It was called `scripts/verify_account_delete_request_live.py` until 2026-09-05; that name
+put a production writer one `pytest scripts/` away from running, and it
+advertised itself to other plans as the pattern to copy. The same three-part
+guard already applied to scripts/verify_metering_live.py now applies here, and
+all three stay — do not undo one because the others cover it:
+
+  1. Renamed out of the `test_*.py` namespace, so no test runner collects it.
+  2. `--apply` is required. A bare invocation prints a refusal and exits 2
+     WITHOUT connecting to anything.
+  3. Importing this module has no side effects: credential reads, connections
+     and writes are reached only through `if __name__ == "__main__"`.
+
+Deliberately unchanged: what the script does when it IS run with --apply.
+Same checks, same order, same assertions, same output, same cleanup.
+
+Found by the 2026-09-05 suite audit, which classified all 34 database-touching
+`scripts/test_*.py` files; these four were the ones that commit real writes.
+
+Usage:
+  python3.12 scripts/verify_account_delete_request_live.py --apply
+
+verify_account_delete_request_live.py -- End-to-end verification of the
 account deletion-request stub against the LIVE production API:
   POST /account/delete-request
   GET  /account/delete-requests
@@ -15,7 +37,7 @@ Requires in backend/app/.env (or environment):
   SUPABASE_SERVICE_KEY -- service role key (for admin.generate_link)
 
 Usage:
-  python3 scripts/test_account_delete_request_e2e.py
+  python3 scripts/verify_account_delete_request_live.py
 """
 
 import os
@@ -29,7 +51,11 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / "backend" / "app" / ".env")
 
-SB_URL = os.environ["SUPABASE_URL"]
+# Read lazily: importing this module must not require credentials.
+def _sb_url():
+    return os.environ["SUPABASE_URL"]
+
+
 API_BASE = "https://rhemata-production.up.railway.app"
 TEST_EMAIL = "creative@clf-church.com"
 
@@ -67,7 +93,7 @@ def jwt_for_email(db, email):
     same approach as scripts/verify_metering_live.py."""
     link = db.auth.admin.generate_link({"type": "magiclink", "email": email})
     resp = httpx.get(
-        f"{SB_URL}/auth/v1/verify",
+        f"{_sb_url()}/auth/v1/verify",
         params={
             "token": link.properties.hashed_token,
             "type": "magiclink",
@@ -82,13 +108,29 @@ def jwt_for_email(db, email):
     return token, link.user.id
 
 
+def _require_apply(argv=None):
+    """Refuse to run without --apply, before anything connects or is read.
+
+    Same dry-run-by-default convention as scripts/verify_metering_live.py,
+    scripts/apply_migration_088.py and scripts/sync_master_ingestion_queue.py.
+    Returns a process exit code: 0 to proceed, 2 to refuse.
+    """
+    argv = sys.argv[1:] if argv is None else argv
+    if "--apply" not in argv:
+        print("REFUSED: %s writes to the PRODUCTION database." % Path(__file__).name)
+        print("Nothing was connected to and nothing was written.")
+        print("Re-run with --apply if that is genuinely what you intend.")
+        return 2
+    return 0
+
+
 def main():
     from supabase import create_client
 
     print("\nAccount deletion requests -- end-to-end verification")
     print("=" * 50)
 
-    db = create_client(SB_URL, os.environ["SUPABASE_SERVICE_KEY"])
+    db = create_client(_sb_url(), os.environ["SUPABASE_SERVICE_KEY"])
     conn = get_db_conn()
     cur = conn.cursor()
 
@@ -165,4 +207,7 @@ def main():
 
 
 if __name__ == "__main__":
+    _refusal = _require_apply()
+    if _refusal:
+        sys.exit(_refusal)
     main()

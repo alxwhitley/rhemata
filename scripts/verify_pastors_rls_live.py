@@ -1,6 +1,28 @@
 #!/usr/bin/env python3
 """
-test_pastors_rls.py — Verify RLS policies for the three Pastors' Notes tables.
+⚠ THIS SCRIPT WRITES TO THE PRODUCTION DATABASE. It is not a pytest test and
+never was. It was called `scripts/verify_pastors_rls_live.py` until 2026-09-05; that name
+put a production writer one `pytest scripts/` away from running, and it
+advertised itself to other plans as the pattern to copy. The same three-part
+guard already applied to scripts/verify_metering_live.py now applies here, and
+all three stay — do not undo one because the others cover it:
+
+  1. Renamed out of the `test_*.py` namespace, so no test runner collects it.
+  2. `--apply` is required. A bare invocation prints a refusal and exits 2
+     WITHOUT connecting to anything.
+  3. Importing this module has no side effects: credential reads, connections
+     and writes are reached only through `if __name__ == "__main__"`.
+
+Deliberately unchanged: what the script does when it IS run with --apply.
+Same checks, same order, same assertions, same output, same cleanup.
+
+Found by the 2026-09-05 suite audit, which classified all 34 database-touching
+`scripts/test_*.py` files; these four were the ones that commit real writes.
+
+Usage:
+  python3.12 scripts/verify_pastors_rls_live.py --apply
+
+verify_pastors_rls_live.py — Verify RLS policies for the three Pastors' Notes tables.
 
 Run AFTER applying migration 038_pastors_notes.sql in Supabase SQL Editor.
 
@@ -10,7 +32,7 @@ Requires in backend/app/.env (or environment):
   SUPABASE_ANON_KEY  — public anon key (or NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
 Usage:
-  python3 scripts/test_pastors_rls.py
+  python3 scripts/verify_pastors_rls_live.py
 
 Checks:
   1. anon client CANNOT insert into user_roles
@@ -237,6 +259,22 @@ def run(conn, anon):
         cur.close()
 
 
+def _require_apply(argv=None):
+    """Refuse to run without --apply, before anything connects or is read.
+
+    Same dry-run-by-default convention as scripts/verify_metering_live.py,
+    scripts/apply_migration_088.py and scripts/sync_master_ingestion_queue.py.
+    Returns a process exit code: 0 to proceed, 2 to refuse.
+    """
+    argv = sys.argv[1:] if argv is None else argv
+    if "--apply" not in argv:
+        print("REFUSED: %s writes to the PRODUCTION database." % Path(__file__).name)
+        print("Nothing was connected to and nothing was written.")
+        print("Re-run with --apply if that is genuinely what you intend.")
+        return 2
+    return 0
+
+
 def main():
     print("\nPastors' Notes — RLS verification (migration 038)")
     print("=" * 50)
@@ -260,4 +298,7 @@ def main():
 
 
 if __name__ == "__main__":
+    _refusal = _require_apply()
+    if _refusal:
+        sys.exit(_refusal)
     main()
