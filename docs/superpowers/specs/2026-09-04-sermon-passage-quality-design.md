@@ -281,6 +281,15 @@ filter/no-filter decision.
 
 ### Stage 4 — build calibration data only if Stage 3 authorizes it
 
+> **NOT AUTHORIZED. Stage 3 ran on 2026-09-05 and Alex ruled NO FILTER.**
+> Kill-grade passages reached top 8 in 6 of 50 question groups (12%), were
+> cited in 3 (6%), and degraded 0 of those 3 — zero theological errors, zero
+> teacher misrepresentations. Stages 4 and 5 below are closed and must not be
+> started. Evidence:
+> `docs/audits/2026-09/sermon_exposure_audit_2026-09-05.md`; ruling recorded in
+> `docs/roadmap.md`.
+
+
 Do not precommit to 150 items. Choose the size from the measured kill base rate
 and the error bound needed for the decision. Keep prevalence estimation and
 classifier development distinct even if they share passages. The durable,

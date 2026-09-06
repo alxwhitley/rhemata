@@ -18,18 +18,15 @@ status — details under each item below.
 
 **Starlette advisories triaged and the one real finding mitigated** (`d9c3b1c`,
 `docs/audits/2026-09/starlette_advisory_triage_2026-09-05.md`). The 2026-08-24
-scan's "7 advisories" collapse to 5 distinct CVEs; 4 are inert here. The fifth
-is real: starlette 0.52.1 does not apply `max_fields`/`max_part_size` to
-urlencoded bodies, **and FastAPI parses the body before it solves dependencies**,
-so `/ingest`'s admin gate does not stand in front of it. Measured on the real
-endpoint: 200k fields as multipart rejected in 11ms without reaching the gate;
-the same fields urlencoded parsed over 686ms of event-loop-blocking work, on a
-single-worker API. Alex classified it **Scheduled** and chose a narrow
-mitigation over the coupled fastapi+starlette bump, which stays Scheduled.
-A middleware now refuses urlencoded outright — safe because no endpoint here
-accepts it. **Confirmed live**: the production API returns `415` with this
-middleware's exact message in 0.12s, while multipart still reaches the admin
-gate with `401`.
+scan's "7 advisories" are 5 distinct CVEs; 4 are inert here. The fifth is real:
+starlette 0.52.1 does not apply `max_fields`/`max_part_size` to urlencoded
+bodies, **and FastAPI parses the body before it solves dependencies**, so
+`/ingest`'s admin gate does not stand in front of it — 200k fields urlencoded
+cost 686ms of event-loop-blocking work on a single-worker API, against 11ms for
+the same fields as multipart. Alex classified it **Scheduled** and chose a
+narrow middleware refusing urlencoded over the coupled fastapi+starlette bump,
+which stays Scheduled. **Confirmed live**: production returns `415` in 0.12s
+while multipart still reaches the admin gate with `401`.
 
 **Two UI fixes, deployed and verified by bytes.** `c58f252` renders the
 word-study article on the standalone `/study` word search — it had been fetched
@@ -48,7 +45,7 @@ ships in the served JS.
 history** — there is no CI of any kind. 90/90 credential-free files pass. Two
 stale references repaired (`b782375`): a test pointing at a script archived in
 August, crashing before three of its own checks ran, and a hardcoded corpus
-count of 144 the corpus had outgrown to 172 while the endpoint was correct.
+count of 144 the corpus had outgrown to 172.
 
 **Four production writers were sitting in the `test_*.py` namespace** and are
 now gated (`6ca1310`). `test_ingest_queue_endpoints` inserted a `user_roles`
@@ -61,13 +58,12 @@ same three-part guard as `verify_metering_live.py`.
 the namespace for any other file that commits on a real connection.
 
 **Incident, recorded because the outcome was clean and the method was not.**
-While mutation-proving that guard, the guard was stripped from
-`verify_pastors_rls_live.py` *in place* and the checker then subprocess-ran it
-bare, so `main()` executed against production unattended — the exact thing the
-hard rule forbids. Net effect verified zero afterward: cleanup sits in a
-`finally` block, `pastors_cards` and `contributor_requests` are both empty, and
-`user_roles` shows 1 admin / 1 user with no residue. Only that one script was
-mutated. The durable lesson is now a CLAUDE.md landmine.
+Mutation-proving that guard stripped it from `verify_pastors_rls_live.py` *in
+place*, and the checker then subprocess-ran the script bare, so `main()`
+executed against production unattended — the thing the hard rule forbids. Net
+effect verified zero: cleanup is in a `finally`, both target tables are empty,
+`user_roles` shows no residue, and only that one script was mutated. The
+durable lesson is now a CLAUDE.md landmine.
 
 **Post-deploy smoke passed on the real answer path.** Guest job
 `06de7723-46e3-4d1e-a050-4739f275dcd4`: `outcome=answered`, 3,058 characters,
@@ -92,19 +88,16 @@ containment, and Profile swipe-to-dismiss. The `visualViewport` `top`-write
 change that was held in reserve for a surviving overscroll bounce is therefore
 **not needed and must not be applied** — the bounce is gone.
 
-**TIPNR ingestion is paused mid-gate, one operation in.** Packets 0–4 are
-merged (`8c99ea1` is an ancestor). Of five approved operations only
-**operation 1 ran** — the rollback-only probe, 2026-09-02: 600 rows staged, 1
-transaction rolled back, **0 committed**, 0 embedding requests. Operations 2–5
-have not started. Live state re-verified 2026-09-05: `next_batch_index 1`,
-`completed_batches 0`, 3,939 clean, 0 TIPNR propositions, source hidden,
-`biblical_context_answer_enabled false`, both registries empty. Three things a
-resuming session needs: the pinned artifact is **not tracked in git** (confirm
-`sources/stepbible/` hashes to `69f69d80…e180e`, or 26 checks silently skip);
-approvals are same-day and the `local/2026-09/` artifacts are expired; and the
-classifier refuses these writes from inside a session — the probe ran only when
-Alex invoked it with `!`, and `bash <script>.sh` was refused where an explicit
-`python3.12 scripts/…` was allowed.
+**TIPNR ingestion is paused mid-gate, one operation in.** Packets 0–4 merged
+(`8c99ea1`). Of five approved operations only **operation 1 ran** — the
+rollback-only probe, 2026-09-02: 600 rows staged, **0 committed**, 0 embedding
+requests. State re-verified 2026-09-05: `next_batch_index 1`,
+`completed_batches 0`, 3,939 clean, source hidden, both registries empty. A
+resuming session needs three things: the pinned artifact is **not tracked in
+git** (confirm `sources/stepbible/` hashes to `69f69d80…e180e`, or 26 checks
+silently skip); approvals are same-day and `local/2026-09/`'s are expired; and
+the classifier refuses these writes from inside a session — the probe ran only
+when Alex invoked it with `!`.
 
 ---
 
@@ -116,10 +109,12 @@ Alex invoked it with `!`, and `bash <script>.sh` was refused where an explicit
   authorized mid-session and produced the writer-gating work.
 - Findings promoted to Blocker: **0**. The starlette finding was classified
   Scheduled by Alex, with the mitigation shipped in the same decision.
-- Scope changes approved by Alex: six, all via explicit decision — Scheduled
+- Scope changes approved by Alex: eight, all via explicit decision — Scheduled
   plus mitigate, commit without pushing, static-audit the DB tests before
-  running any, transcribe the roadmap wording, then deploy, then run the
-  post-deploy answer smoke.
+  running any, transcribe the roadmap wording, deploy, run the post-deploy
+  answer smoke, run the sermon exposure audit, and rule no filter.
+- Gates closed: **1** — sermon passage quality, measured then ruled. It had
+  blocked all sermon filter/classifier work since 2026-09-04.
 - Active critical-path item count: **0**.
 - Rule violations: **1**, self-reported above — an unattended production write
   during a mutation test, net effect zero.
@@ -141,6 +136,13 @@ No active Blocker. In recommended order:
    awaiting a commit-or-gitignore decision; two tests that need
    `PYTHONPATH=backend` when the other 86 self-resolve; and a hydration
    mismatch on `/study`'s root `<html>` theme class.
+
+**Sermon passage quality is CLOSED — no filter** (Alex, 2026-09-05, after the
+session close). The Stage 3 gate was measured read-only: kill-grade passages
+reached top 8 in 6 of 50 question groups, were cited in 3, and degraded 0 of 3.
+Stages 4 and 5 of the design spec are not authorized. Recorded in
+`docs/roadmap.md`, CLAUDE.md Settled #31, and the spec itself;
+evidence in `docs/audits/2026-09/sermon_exposure_audit_2026-09-05.md`.
 
 Also known, not scheduled: **10 of the 30 read-only DB tests make real paid
 model calls** and were only run safely because the API keys were neutralized

@@ -533,6 +533,26 @@ PLAN.md's Open Decisions note.
     acceptance evidence against the repaired behavior, and Alex's explicit
     approval.
 
+## Settled product decisions (2026-09-05) — sermon passage quality closed
+
+31. **No filter, down-weight, or model-scored quality gate on sermon passages**
+    (Alex's decision, 2026-09-05). Measured before deciding, not assumed:
+    across 50 distinct question groups, a kill-grade passage reached the top 8
+    in 6 (12%), was cited in a served answer in 3 (6%), and materially degraded
+    **0 of 3** — zero theological errors, zero teacher misrepresentations. The
+    weak passages are real (CLF live-service recordings graded 0/5), but the
+    answer path summarises them accurately, discarding caption artifacts and a
+    mistranscribed word rather than repeating them. **Passage quality and
+    answer quality are not the same thing** — that is the reason this stays
+    closed. Stages 4 and 5 of the sermon-passage design spec (calibration set,
+    classifier, mechanism comparison) are **not authorized**; do not re-propose
+    them without new evidence of a kind this audit lacked. This will look
+    reopenable to any session that reads a bad sermon chunk, which is why it is
+    recorded here rather than only in `docs/roadmap.md`. The measured exposure
+    rate is a **floor**, not a point estimate (10% of referenced chunk ids no
+    longer exist). Full evidence:
+    `docs/audits/2026-09/sermon_exposure_audit_2026-09-05.md`.
+
 ## Session Routing
 
 Determines which path a session's task runs on — not a judgment call. Read

@@ -408,32 +408,48 @@ propositions and positions. This is accident repair, not a gate: the existing
 fidelity, so it cannot catch this class and nothing prevents recurrence on
 other old-audio material.
 
-### Answer-level sermon exposure audit — gates any filter work
+### Sermon passage quality — CLOSED, no filter (Alex, 2026-09-05)
 
-Before any filter, down-weight, or model-scored quality gate on sermon passages,
-audit the existing **20 distinct question groups**, not all 74 repeated answer
-jobs as independent exposure. Record whether a kill-grade passage reached top
-8 and whether it materially degraded the served answer. Stop when both rates
-are known and Alex has made the filter/no-filter decision.
+**Decision: do not build a filter, down-weight, or model-scored quality gate on
+sermon passages.** Stages 4 and 5 of
+`docs/superpowers/specs/2026-09-04-sermon-passage-quality-design.md` — the
+calibration set, the classifier, and the mechanism comparison — are **not
+authorized** and must not be started. Do not re-propose this without new
+evidence of a kind the audit below did not have.
 
-Only if that decision authorizes classifier work, build a source-masked,
-randomized calibration set whose size is derived from the observed base rate
-and required error bound rather than precommitted at 150. Preserve a redacted
-manifest with immutable passage provenance, selection weights, labels and
-rubric reasons; group the holdout by document to prevent overlapping-chunk
-leakage; and report per-source plus source-held-out performance so a per-passage
-classifier cannot silently become the rejected source filter. Predeclare keep
-false-exclusion, kill recall, coverage/no-material, and counterfactual answer-
-quality gates.
+The gate was measured, not assumed
+(`docs/audits/2026-09/sermon_exposure_audit_2026-09-05.md`, read-only). Across
+**50 distinct question groups** in 76 answer jobs: a kill-grade chunk was
+retrieved for **6 (12%)**, all of them inside the top 8 (positions 2, 3, 4, 4,
+4, 7 — meaningful, because retrieved sets run to 29 candidates, mean 13); it was
+**cited in a served answer for 3 (6%)**; and **0 of those 3 were materially
+degraded**. Zero theological errors, zero teacher misrepresentations — the two
+outcomes that would have triggered the Blocker rule. Every claim the answers
+attributed to a named teacher was verified present in that job's retrieved
+evidence.
 
-Why the gate exists: the 2026-09-04 baseline of 30 was deliberately stratified,
-source-visible, and included eight current passages re-selected by word overlap
-after their historical chunks were deleted. It cannot give a base rate or an
-exact historical-exposure estimate, and four mechanical detectors built on it
-all failed on inspection. Failed detectors may be reused as challenge-set
-strata, never as production rules without new evidence. Full evidence and the
-reviewed staged plan:
-`docs/superpowers/specs/2026-09-04-sermon-passage-quality-design.md`.
+The finding underneath the number: passage quality and answer quality are not
+the same thing. Passages graded unreadable as prose were summarised accurately,
+with caption artifacts and a mistranscribed word (`rama` for *rhema*) silently
+discarded rather than repeated.
+
+Three limits are recorded in the audit and matter if this is ever reopened.
+**12% is a floor, not a point estimate** — 65 of 635 referenced chunk ids no
+longer exist and two of the eight kill passages were rebuilt, so their
+historical exposure is unmeasurable by id. The roadmap's original "20 distinct
+question groups" did not match live data (50 across 76 jobs); the audit used the
+larger denominator. And it measures the corpus after the 2026-09-04 rebuild
+improved 79 documents, so historical harm may have been higher.
+
+**The one intervention this evidence would support, if Alex ever wants a cheaper
+safeguard, is on attribution rather than quality:** one answer cited a CLF
+passage while never naming its speaker anywhere in the prose. That is the
+surface where a weak passage can influence an answer with no attributable
+owner. Not scheduled; recorded so the option is not lost.
+
+Still standing from the original entry: the four mechanical detectors built on
+the 2026-09-04 baseline all failed on inspection and may be reused as
+challenge-set strata, never as production rules without new evidence.
 
 ### Quote accuracy and relevance repair — before any re-enable
 
