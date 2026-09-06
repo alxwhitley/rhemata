@@ -303,7 +303,7 @@ function FeedbackButtons({
 
   if (showThanks) {
     return (
-      <div className="flex items-center gap-1 mt-2">
+      <div className="flex min-h-11 items-center gap-1">
         <span className="text-xs text-muted-foreground">Thanks for the feedback</span>
       </div>
     );
@@ -311,7 +311,7 @@ function FeedbackButtons({
 
   return (
     <>
-      <div className="flex items-center gap-1 mt-2">
+      <div className="flex items-center gap-1">
         <button
           onClick={() => { if (!rating) submitFeedback("thumbs_up"); }}
           aria-label="Good answer"
@@ -434,7 +434,7 @@ function CitationFallback({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <section className="mt-4 border-t border-border pt-3" aria-label="Sources">
+    <section aria-label="Sources">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
@@ -525,6 +525,13 @@ export const ChatMessage = memo(function ChatMessage({
   // never mid-stream. Also forced off entirely when the Study Panel kill
   // switch is off — an underline that opens to nothing is worse than none.
   const detectVerses = !isStreaming && isStudyPanelEnabled();
+  // Feedback and Sources read as one footer group: generous space above it,
+  // none between its rows (their 44px touch targets supply the optical gap).
+  // The group renders only when at least one row will, so an answer with
+  // neither never leaves an empty gap under the prose.
+  const showSources =
+    !isStreaming && shouldRenderCitationFallback(cleanedContent, citations.length);
+  const showFooter = isComplete || showSources;
 
   return (
     <div className="mb-4 border-t border-border pt-3">
@@ -570,16 +577,29 @@ export const ChatMessage = memo(function ChatMessage({
           {cleanedContent}
         </ReactMarkdown>
       </div>
-      {!isStreaming && shouldRenderCitationFallback(cleanedContent, citations.length) ? (
-        <CitationFallback citations={citations} onCitationClick={onCitationClick} />
-      ) : null}
       <QuoteRail quoteIds={quoteIds} />
-      <FeedbackButtons
-        messageId={messageId}
-        question={question}
-        accessToken={accessToken}
-        isComplete={isComplete}
-      />
+      {showFooter ? (
+        <footer className="mt-6 flex flex-col">
+          <FeedbackButtons
+            messageId={messageId}
+            question={question}
+            accessToken={accessToken}
+            isComplete={isComplete}
+          />
+          {showSources ? (
+            // Optical correction, measured not guessed: stacked 44px targets
+            // put 27px of dead air between a 16px thumb icon and the Sources
+            // label -- wider than the break above the group, which inverted
+            // the rhythm. This pulls the rows to ~15px apart. The overlap is
+            // padding against padding (the icon ends 14px above this edge,
+            // the label starts 12px below it), so no visible mark and no
+            // usable target loses ground.
+            <div className="-mt-3">
+              <CitationFallback citations={citations} onCitationClick={onCitationClick} />
+            </div>
+          ) : null}
+        </footer>
+      ) : null}
     </div>
   );
 });
