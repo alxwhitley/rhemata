@@ -191,9 +191,10 @@ const EXCERPT_COMPONENTS: React.ComponentProps<typeof ReactMarkdown>["components
 interface ScriptureVerse { reference: string; text: string; }
 
 function WordStudyPanel({
-  doc, definition, isSaved, onToggleSave, isLoggedIn,
+  doc, definition, content, loading, isSaved, onToggleSave, isLoggedIn,
 }: {
   doc: WordSearchResult; definition: WordDefinition | null;
+  content: string | null; loading: boolean;
   isSaved: boolean; onToggleSave: () => void; isLoggedIn: boolean;
 }) {
   const [versesOpen, setVersesOpen] = useState(false);
@@ -234,6 +235,26 @@ function WordStudyPanel({
           <p className="text-sm text-foreground leading-relaxed">{definition.meaning}</p>
         </>
       )}
+
+      {/* Word study article. handleWordStudySelect has fetched this into
+          wordStudyContent since 40cdb4c, but nothing rendered it -- the
+          standalone /study word search showed a definition and no article.
+          See CLAUDE.md Landmines, "the standalone /study word SEARCH path". */}
+      <p className="text-xs font-medium uppercase tracking-wide mt-6 mb-2 text-muted-foreground">Word Study</p>
+      {loading ? (
+        <>
+          <Skeleton className="h-3 w-full mb-2" />
+          <Skeleton className="h-3 w-full mb-2" />
+          <Skeleton className="h-3 w-5/6" />
+        </>
+      ) : content ? (
+        <ReactMarkdown components={EXCERPT_COMPONENTS}>{content}</ReactMarkdown>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No content available for this word study yet.
+        </p>
+      )}
+
       <div className="mt-6 border-t border-border">
         <button
           onClick={handleToggleVerses}
@@ -1108,6 +1129,8 @@ export default function StudyPage() {
                   <WordStudyPanel
                     doc={wordStudyDoc}
                     definition={wordStudyDefinition}
+                    content={wordStudyContent}
+                    loading={wordStudyLoading}
                     isSaved={savedStrongsSet.has(wordStudyDoc.strongs_number)}
                     onToggleSave={handleToggleSaveWordStudy}
                     isLoggedIn={!!user}
@@ -1279,6 +1302,8 @@ export default function StudyPage() {
                   <WordStudyPanel
                     doc={wordStudyDoc}
                     definition={wordStudyDefinition}
+                    content={wordStudyContent}
+                    loading={wordStudyLoading}
                     isSaved={savedStrongsSet.has(wordStudyDoc.strongs_number)}
                     onToggleSave={handleToggleSaveWordStudy}
                     isLoggedIn={!!user}
