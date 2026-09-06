@@ -57,14 +57,20 @@ reached inside the ~20s median, and answer arrival remains the only completion
 signal. The visible phase is also the single polite, atomic status
 announcement. No percentage, meter, or fabricated source count is rendered.
 
-**Still open — the footer half of this entry has not been built.** In the
-completed-answer footer, keep the thumbs-up/down controls left-aligned
-on their own row directly above the Sources disclosure. Treat feedback and
-Sources as one compact footer group: use a tight gap between those two rows,
-retain the existing usable touch targets, and let the larger separation occur
-between the answer content and the footer group. Do not place feedback opposite
-Sources in a shared horizontal row or leave the feedback controls floating in
-open vertical space.
+**DONE and live in the repository — the footer half shipped 2026-09-05
+(`2137233`), not yet deployed.** Feedback and Sources now render as one footer
+group: thumbs left-aligned on their own row directly above the Sources
+disclosure, which no longer carries its own rule or margin. The group renders
+only when at least one row will. Measured rather than assumed — a plain stack
+inverted the intended rhythm, putting 27px between the thumb icon and the
+Sources label against a 24px break above the group, because two 44px touch
+targets contribute 26px of unpainted padding. Widening the break was rejected:
+the message wrapper is `mb-4`, so a larger break attaches the footer to the
+next message instead of its own answer. `-mt-3` tightens the rows to 15px; the
+overlap is padding against padding and the reachable thumb target stays 32px,
+past WCAG 2.5.8 AA. Geometry pinned by
+`frontend/tests/e2e/answer-footer.spec.ts`, mutation-proven against removal of
+the correction alone.
 
 ### Remaining corpus track — A1-A6, after the web-article proof
 
