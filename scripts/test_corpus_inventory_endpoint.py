@@ -173,10 +173,17 @@ def main() -> int:
     print("CSV empty-author row count: %d" % empty_author_count)
     print("Live `SELECT count(*) FROM documents WHERE author IS NULL OR btrim(author)=''`: %d"
           % live_missing_author)
+    # No hardcoded corpus count here. This check previously also required the
+    # figure to equal a literal 144; the corpus reached 172 and the check began
+    # failing while the endpoint was correct -- CSV and the live query agreed
+    # with each other throughout. CLAUDE.md: "Corpus counts are never
+    # documented here. Query live -- any static number rots within days and has
+    # already caused one round of false blockers." The real invariant is that
+    # the exported CSV agrees with the database, at whatever the count is.
     _check(
-        "Check 3d: empty-author row count matches independent live query (144)",
-        empty_author_count == live_missing_author == 144,
-        "csv=%d live=%d expected=144" % (empty_author_count, live_missing_author),
+        "Check 3d: empty-author row count matches independent live query",
+        empty_author_count == live_missing_author,
+        "csv=%d live=%d" % (empty_author_count, live_missing_author),
     )
 
     conn.close()

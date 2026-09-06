@@ -11,7 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MIGRATION_PATH = ROOT / "migrations" / "089_quote_quality_pipeline.sql"
-APPLY_PATH = ROOT / "scripts" / "apply_migration_089.py"
+# Archived to scripts/archive/2026-08/ after the migration was applied
+# (2026-08-19), per the repo convention for finished one-off scripts.
+APPLY_PATH = ROOT / "scripts" / "archive" / "2026-08" / "apply_migration_089.py"
 
 failures = []
 
