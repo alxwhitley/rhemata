@@ -1002,6 +1002,38 @@ different row, per the hard rule above.
 
 ## Landmines (live, as of last audit — verify before trusting)
 
+- **`main.py`'s urlencoded refusal is load-bearing, and a `Depends()` auth gate
+  does NOT protect a form endpoint from body parsing — 2026-09-05.** FastAPI
+  parses the request body at `routing.py:366` and does not solve dependencies
+  until `routing.py:416`, so an anonymous caller's body is fully parsed before
+  `require_admin_role` ever runs, and the 401 arrives afterwards. Combined with
+  GHSA-82w8-qh3p-5jfq (starlette 0.52.1 applies `max_fields`/`max_part_size` to
+  multipart but not urlencoded), a 200k-field urlencoded body to `/ingest` cost
+  686ms of event-loop-blocking work on a single-worker API; the same fields as
+  multipart were refused in 11ms without reaching the gate. The middleware in
+  `backend/app/main.py` refuses the content type outright. **It reads as
+  redundant** — nothing here sends urlencoded, and `/ingest` looks admin-gated
+  — which is exactly why it gets deleted in a cleanup. It is the whole fix, and
+  it is what allows the coupled fastapi+starlette bump to stay deferred.
+  `scripts/test_ingest_urlencoded_rejection.py` is the guard. Note the general
+  lesson outlives this CVE: any future form endpoint is parsed before its own
+  auth.
+
+- **Never mutation-test a production-write guard by removing it in place —
+  2026-09-05, done, with a clean outcome that does not excuse the method.**
+  Proving that `test_live_writer_guards.py` was load-bearing meant stripping the
+  `--apply` gate out of `verify_pastors_rls_live.py` and re-running the checker,
+  which subprocess-runs the script bare — so `main()` executed against
+  production unattended, the exact thing the Session Routing hard rule forbids.
+  Net effect was zero (cleanup is in a `finally`; both target tables verified
+  empty afterward), but only by luck of that script's design. Mutate a COPY, or
+  assert on the guard function's return value, never the live file that
+  something else then executes. The related standing fact: `scripts/test_*.py`
+  is NOT a safe namespace by construction — four files in it committed real
+  writes, one granting `role='admin'`, until they were renamed to
+  `verify_*_live.py` and gated (`6ca1310`). `scripts/test_live_writer_guards.py`
+  sweeps for recurrence; a new writer must never be added under `test_*`.
+
 - **75 Discovery candidates exist ONLY on `origin/cursor/discovery-arthur-hunt-0690`,
   and that branch must never be merged nor deleted — 2026-09-03.** Its Discovery
   sheet holds 193 named candidates against `main`'s 118, a strict superset:

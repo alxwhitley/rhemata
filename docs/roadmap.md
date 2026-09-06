@@ -360,15 +360,20 @@ The bumps that were safe shipped 2026-08-24 (`3a30639`, `09b102a`); baseline
 security headers shipped the same day (`9b816a8`). What remains, each blocked
 on a real coupling rather than on effort:
 
-1. **starlette + fastapi coupled bump.** 7 starlette advisories. All fix
-   versions are `>=1.0.0`, but pinned `fastapi==0.128.8` declares
-   `starlette<1.0.0` — neither moves alone. This is Invariant 14's landmine
-   territory: the `da27fe4` 422-vs-401 admin-auth bug came from exactly this
-   version interaction and reproduced locally but NOT in the deployed
-   container. **Do the read-only exploitability triage of the 7 advisories
-   first** — the same pass done for the Next.js CVEs turned 3 alarming-looking
-   entries into zero live attack surface, and may do so here. Triage is cheap;
-   the bump is not.
+1. **starlette + fastapi coupled bump. Triage DONE 2026-09-05; the bump
+   itself remains Scheduled.** The "7 advisories" are 5 distinct CVEs (the
+   rest are PYSEC aliases). Four are inert here. The fifth,
+   GHSA-82w8-qh3p-5jfq, was real and unauthenticated, and is now closed by a
+   narrow urlencoded refusal rather than the bump (`d9c3b1c`,
+   `docs/audits/2026-09/starlette_advisory_triage_2026-09-05.md`) — Alex's
+   decision, 2026-09-05. Do not re-run the triage. The bump still does not
+   move alone: all fix versions are `>=1.0.0` and pinned `fastapi==0.128.8`
+   declares `starlette<1.0.0`. This stays Invariant 14's landmine territory —
+   the `da27fe4` 422-vs-401 admin-auth bug came from exactly this version
+   interaction and reproduced locally but NOT in the deployed container. Note
+   the applicable advisory's fix version is `1.3.1`, the highest of the five,
+   so a bump chosen for the lower-severity entries would leave the one that
+   actually applies unfixed.
 2. **pdfplumber + pdfminer-six coupled bump.** 2 advisories.
    `pdfplumber==0.11.6` exact-pins `pdfminer.six==20250327`. Sits behind PDF
    ingestion, so a bad bump is a corpus-quality risk (altered text extraction),
@@ -506,6 +511,20 @@ Also parked: the existing `next-themes` development hydration warning observed
 during the 2026-09-01 responsive WebKit pass. All 16 tested mobile/tablet
 journeys passed and no production failure was demonstrated; revisit only if it
 causes visible theme flicker, incorrect initial styling, or a production error.
+
+### Regression-suite repairs and the orphaned reference-grounding fixture
+
+**Parked.** The 2026-09-05 suite run — the first in this repo, which has no CI
+— left two items. Document `c19ad18c-ea97-4841-8fa0-e60afc273521` no longer
+exists (no row, zero chunks) while
+`scripts/test_propositions_reference_grounding.py` and
+`scripts/test_reference_grounding_unit_proof.py` both hardcode it; consistent
+with the 2026-09-04 re-ingest replacing 79 sermon documents with new ids. They
+need a document resolved at runtime, which is a design call, not a repair.
+Separately, 10 of the 30 read-only database-touching tests make real paid model
+calls and are only safe to run with the provider keys neutralized. The four
+that commit production writes were gated and renamed the same day (`6ca1310`)
+and are no longer part of this.
 
 ### Historical YouTube caption defect — 79 documents rebuilt, remainder left alone
 
