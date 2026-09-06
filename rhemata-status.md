@@ -10,11 +10,11 @@ Last verified: 2026-09-05. **PLAN.md has no active blockers.**
 
 ## Current state
 
-**Six commits sit on local `main` and NOTHING FROM THIS SESSION IS DEPLOYED.**
-`origin/main` is still at `4fdf39b`; local is `d9c3b1c`..`6ca1310`. This was a
-remote, phone-driven session, repo-only by design — no push, no migration, no
-production write approved. Four of the six change shipped behavior, so the
-deploy is a live, pending, attended gate.
+**Seven commits shipped and are DEPLOYED and verified in production.**
+`origin/main` is at `f1a0cd7` (`d9c3b1c`..`f1a0cd7`), pushed on Alex's explicit
+approval at the end of a remote, phone-driven session. No migration and no
+admin database write were part of it. Verification was functional, not build
+status — details under each item below.
 
 **Starlette advisories triaged and the one real finding mitigated** (`d9c3b1c`,
 `docs/audits/2026-09/starlette_advisory_triage_2026-09-05.md`). The 2026-08-24
@@ -27,23 +27,28 @@ the same fields urlencoded parsed over 686ms of event-loop-blocking work, on a
 single-worker API. Alex classified it **Scheduled** and chose a narrow
 mitigation over the coupled fastapi+starlette bump, which stays Scheduled.
 A middleware now refuses urlencoded outright — safe because no endpoint here
-accepts it. Repository-verified only; **not deployed**.
+accepts it. **Confirmed live**: the production API returns `415` with this
+middleware's exact message in 0.12s, while multipart still reaches the admin
+gate with `401`.
 
-**Two UI fixes, both repo-verified and undeployed.** `c58f252` renders the
+**Two UI fixes, deployed and verified by bytes.** `c58f252` renders the
 word-study article on the standalone `/study` word search — it had been fetched
 into state since `40cdb4c` and never passed to `WordStudyPanel`. `2137233`
 closes the roadmap's footer half: feedback and Sources are now one group, with
 a measured optical correction (a plain stack put 27px between the thumb icon
 and the Sources label against a 24px break, inverting the rhythm, because two
 44px touch targets stack 26px of unpainted padding). Both are pinned by new
-stubbed Playwright specs and mutation-proven.
+stubbed Playwright specs and mutation-proven. Verified in production per
+`frontend/CLAUDE.md`'s stale-CSS landmine: the served chunk is byte-identical
+to a clean local build apart from 22 bytes of font content-hashes, `-mt-3` is
+present, the stray `.invisible` rule is absent, and the word-study empty state
+ships in the served JS.
 
 **The backend regression suite was run for the first time in this repo's
-history** — there is no CI of any kind. 90/90 credential-free files pass.
-Two stale references repaired (`b782375`): a test pointing at a script archived
-in August, which had been crashing before three of its own checks ran, and a
-hardcoded corpus count of 144 that the corpus had outgrown to 172 while the
-endpoint was correct throughout.
+history** — there is no CI of any kind. 90/90 credential-free files pass. Two
+stale references repaired (`b782375`): a test pointing at a script archived in
+August, crashing before three of its own checks ran, and a hardcoded corpus
+count of 144 the corpus had outgrown to 172 while the endpoint was correct.
 
 **Four production writers were sitting in the `test_*.py` namespace** and are
 now gated (`6ca1310`). `test_ingest_queue_endpoints` inserted a `user_roles`
@@ -64,12 +69,23 @@ hard rule forbids. Net effect verified zero afterward: cleanup sits in a
 `user_roles` shows 1 admin / 1 user with no residue. Only that one script was
 mutated. The durable lesson is now a CLAUDE.md landmine.
 
-**Deployment state elsewhere is unchanged from 2026-09-05's earlier entry.**
-`origin/main` at `4fdf39b` is built by Vercel with
-`VERCEL_FORCE_NO_BUILD_CACHE=1` set (Production scope, project `newwine`) after
-a green build shipped stale CSS; the public API health check passes. The two
-mobile gesture behaviours from `3d7649c`..`4fdf39b` are live and **still not
-verified on a physical device**.
+**Post-deploy smoke passed on the real answer path.** Guest job
+`06de7723-46e3-4d1e-a050-4739f275dcd4`: `outcome=answered`, 3,058 characters,
+15 citations, 3 verified references, 42.1s end to end, picked up by worker
+`1d79a205082d-1-slot2` — which is the direct evidence that `answer-worker`
+rebuilt and came back. It also confirmed three things on deployed code: B8's
+prose-quotation guard held (zero attributed quotations of five or more words),
+`quote_ids` is `[]` so the rail is still correctly off, and `analytics_outcome`
+is NULL, the expected guest path rather than a degraded marker.
+`answer_jobs` went 75 → 76.
+
+**What is still unverified after the deploy.** `search-analytics-finalizer` and
+`search-analytics-retention` rebuilt but were not checked — they have no
+request surface; use `scripts/analytics_health_report.py` if certainty is
+wanted. Vercel still carries `VERCEL_FORCE_NO_BUILD_CACHE=1` (Production scope,
+project `newwine`); removing it silently restores the stale-CSS failure. The
+two mobile gesture behaviours from `3d7649c`..`4fdf39b`, plus today's footer
+and `/study` changes, are live and **not verified on a physical device**.
 
 **TIPNR ingestion is paused mid-gate, one operation in.** Packets 0–4 are
 merged (`8c99ea1` is an ancestor). Of five approved operations only
@@ -78,27 +94,27 @@ transaction rolled back, **0 committed**, 0 embedding requests. Operations 2–5
 have not started. Live state re-verified 2026-09-05: `next_batch_index 1`,
 `completed_batches 0`, 3,939 clean, 0 TIPNR propositions, source hidden,
 `biblical_context_answer_enabled false`, both registries empty. Three things a
-resuming session needs: (1) the pinned artifact is **not tracked in git** —
-confirm `sources/stepbible/` is present and hashes to `69f69d80…e180e`, because
-26 checks silently skip without `TIPNR_TEST_ARTIFACT` set; (2) approvals are
-same-day, and the `local/2026-09/` artifacts are expired; (3) the classifier
-refuses these writes from inside a session — the probe ran only when Alex
-invoked it himself with `!`, and an opaque `bash <script>.sh` was refused where
-an explicit `python3.12 scripts/…` was allowed.
+resuming session needs: the pinned artifact is **not tracked in git** (confirm
+`sources/stepbible/` hashes to `69f69d80…e180e`, or 26 checks silently skip);
+approvals are same-day and the `local/2026-09/` artifacts are expired; and the
+classifier refuses these writes from inside a session — the probe ran only when
+Alex invoked it with `!`, and `bash <script>.sh` was refused where an explicit
+`python3.12 scripts/…` was allowed.
 
 ---
 
 ## Session outcome and measures
 
-- Original outcome completed: **yes** — every item Alex selected was finished
-  and verified; nothing was left half-done.
+- Original outcome completed: **yes** — every item Alex selected was finished,
+  verified, deployed, and smoke-tested.
 - Unplanned investigations started: **1** — the suite audit, which was
   authorized mid-session and produced the writer-gating work.
 - Findings promoted to Blocker: **0**. The starlette finding was classified
   Scheduled by Alex, with the mitigation shipped in the same decision.
-- Scope changes approved by Alex: four, all via explicit decision — Scheduled
+- Scope changes approved by Alex: six, all via explicit decision — Scheduled
   plus mitigate, commit without pushing, static-audit the DB tests before
-  running any, and transcribe the roadmap wording.
+  running any, transcribe the roadmap wording, then deploy, then run the
+  post-deploy answer smoke.
 - Active critical-path item count: **0**.
 - Rule violations: **1**, self-reported above — an unattended production write
   during a mutation test, net effect zero.
@@ -109,10 +125,12 @@ an explicit `python3.12 scripts/…` was allowed.
 
 No active Blocker. In recommended order:
 
-1. **Deploy, then verify on a phone.** Six commits are unpushed and four change
-   shipped behavior. Pushing publishes the backend mitigation and both UI fixes
-   at once. After Vercel, check the footer group and the `/study` word search on
-   a real device, along with the two still-unverified gesture behaviours.
+1. **Device verification.** Everything is deployed; nothing has been seen on
+   real hardware. Check the answer footer group and the `/study` word search,
+   along with the two gesture behaviours outstanding since 2026-09-04. If the
+   overscroll bounce survives, the agreed next step is dropping the `top` write
+   from the `visualViewport` scroll listener — Alex's standing instruction is to
+   stop and ask before doing it, not to apply it pre-emptively.
 
 2. **The orphaned test fixture.** Document `c19ad18c-ea97-4841-8fa0-e60afc273521`
    no longer exists — no row, zero chunks — and
