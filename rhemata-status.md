@@ -83,9 +83,14 @@ is NULL, the expected guest path rather than a degraded marker.
 `search-analytics-retention` rebuilt but were not checked — they have no
 request surface; use `scripts/analytics_health_report.py` if certainty is
 wanted. Vercel still carries `VERCEL_FORCE_NO_BUILD_CACHE=1` (Production scope,
-project `newwine`); removing it silently restores the stale-CSS failure. The
-two mobile gesture behaviours from `3d7649c`..`4fdf39b`, plus today's footer
-and `/study` changes, are live and **not verified on a physical device**.
+project `newwine`); removing it silently restores the stale-CSS failure.
+
+**Device verification PASSED (Alex, 2026-09-05, on real hardware).** This
+closes the item outstanding since 2026-09-04. Confirmed working: the answer
+footer group, the `/study` word search rendering its article, thread overscroll
+containment, and Profile swipe-to-dismiss. The `visualViewport` `top`-write
+change that was held in reserve for a surviving overscroll bounce is therefore
+**not needed and must not be applied** — the bounce is gone.
 
 **TIPNR ingestion is paused mid-gate, one operation in.** Packets 0–4 are
 merged (`8c99ea1` is an ancestor). Of five approved operations only
@@ -125,21 +130,14 @@ Alex invoked it with `!`, and `bash <script>.sh` was refused where an explicit
 
 No active Blocker. In recommended order:
 
-1. **Device verification.** Everything is deployed; nothing has been seen on
-   real hardware. Check the answer footer group and the `/study` word search,
-   along with the two gesture behaviours outstanding since 2026-09-04. If the
-   overscroll bounce survives, the agreed next step is dropping the `top` write
-   from the `visualViewport` scroll listener — Alex's standing instruction is to
-   stop and ask before doing it, not to apply it pre-emptively.
-
-2. **The orphaned test fixture.** Document `c19ad18c-ea97-4841-8fa0-e60afc273521`
+1. **The orphaned test fixture.** Document `c19ad18c-ea97-4841-8fa0-e60afc273521`
    no longer exists — no row, zero chunks — and
    `test_propositions_reference_grounding.py` and
    `test_reference_grounding_unit_proof.py` both hardcode it. Consistent with
    the 2026-09-04 re-ingest replacing 79 sermon documents with new ids. Needs a
    runtime-resolved document, which is a small design call.
 
-3. **Three papercuts**, cheapest first: 64 untracked `docs/audits/` directories
+2. **Three papercuts**, cheapest first: 64 untracked `docs/audits/` directories
    awaiting a commit-or-gitignore decision; two tests that need
    `PYTHONPATH=backend` when the other 86 self-resolve; and a hydration
    mismatch on `/study`'s root `<html>` theme class.
